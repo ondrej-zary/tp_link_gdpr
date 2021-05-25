@@ -29,7 +29,8 @@ def is_supported_model(ip_addr: str) -> bool:
     """
     # Tuples of model name and model description
     supported_models = [
-        ("Archer C20", "AC750 Wireless Dual Band Router ")  # The space at the end of the model desc is intentional
+        ("Archer C20", "AC750 Wireless Dual Band Router "),  # The space at the end of the model desc is intentional
+        ("TL-MR6400", "300Mbps Wireless N 4G LTE Router"),
     ]
 
     headers = {
