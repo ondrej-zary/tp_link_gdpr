@@ -199,17 +199,21 @@ def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: 
     jsessionid = match.group(1)
     print(f"[+] JSESSIONID: {jsessionid}")
 
-    # Decode the Base64 encoded response
-    decoded: bytes = base64.b64decode(resp.text)
-    decrypted_resp = tp_link_crypto.aes_decrypt(aes_key, aes_iv, decoded)
+    if router_type == 1:
+        # Decode the Base64 encoded response
+        decoded: bytes = base64.b64decode(resp.text)
+        decrypted_resp = tp_link_crypto.aes_decrypt(aes_key, aes_iv, decoded)
 
-    # Remove the PKCS #7 padding
-    num_padding_bytes = int(decrypted_resp[-1])
-    decrypted_resp = decrypted_resp[:-num_padding_bytes]
+        # Remove the PKCS #7 padding
+        num_padding_bytes = int(decrypted_resp[-1])
+        decrypted_resp = decrypted_resp[:-num_padding_bytes]
 
-    decrypted_resp_str: str = decrypted_resp.decode()
+        decrypted_resp_str: str = decrypted_resp.decode()
+    elif router_type == 2:
+        decrypted_resp_str = resp.text
     print_d(decrypted_resp_str)
-    if "[cgi]0" in decrypted_resp_str and "$.ret=0" in decrypted_resp_str and "[error]0" in decrypted_resp_str:
+    if ((router_type == 1 and "[cgi]0" in decrypted_resp_str and "$.ret=0" in decrypted_resp_str and "[error]0" in decrypted_resp_str)
+     or (router_type == 2 and "$.ret=0" in decrypted_resp_str)):
         print("[+] Successfully authenticated with the router")
     else:
         # This might not be an error because other routers may have different response codes. The Archer C20 returns:
