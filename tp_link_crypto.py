@@ -3,6 +3,7 @@ import math
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.backends import default_backend
 
 
 def rsa_encrypt(e: int, n: int, plaintext: bytes) -> bytes:
@@ -54,7 +55,7 @@ def aes_encrypt(key: bytes, iv: bytes, plaintext: bytes) -> bytes:
     """
     padder = padding.PKCS7(algorithms.AES.block_size).padder()
     plaintext_bytes: bytes = padder.update(plaintext) + padder.finalize()
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(plaintext_bytes) + encryptor.finalize()
     return ciphertext
@@ -80,7 +81,7 @@ def aes_decrypt(key: bytes, iv: bytes, plaintext: bytes) -> bytes:
     :param plaintext: Data to encrypt
     :return: Ciphertext
     """
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
     decryptor = cipher.decryptor()
     ciphertext = decryptor.update(plaintext) + decryptor.finalize()
     return ciphertext
