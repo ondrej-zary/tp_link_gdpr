@@ -21,16 +21,16 @@ def print_d(msg: str) -> None:
         print(msg)
 
 
-def is_supported_model(ip_addr: str) -> bool:
+def is_supported_model(ip_addr: str) -> int:
     """
     Determines if a router is supported.
     :param ip_addr: IP address of the router
-    :return: True if supported, otherwise False
+    :return: router type if supported, otherwise 0
     """
     # Tuples of model name and model description
     supported_models = [
-        ("Archer C20", "AC750 Wireless Dual Band Router "),  # The space at the end of the model desc is intentional
-        ("TL-MR6400", "300Mbps Wireless N 4G LTE Router"),
+        ("Archer C20", "AC750 Wireless Dual Band Router ", 1),  # The space at the end of the model desc is intentional
+        ("TL-MR6400", "300Mbps Wireless N 4G LTE Router", 2),
     ]
 
     headers = {
@@ -58,14 +58,14 @@ def is_supported_model(ip_addr: str) -> bool:
     # Determine if it's in the list of supported models
     for supported_model in supported_models:
         if supported_model[0] in model_name and supported_model[1] in model_desc:
-            print(f"[+] Found supported device: {model_name} {model_desc}")
-            return True
+            print(f"[+] Found supported device: {model_name} {model_desc} (type={supported_model[2]})")
+            return supported_model[2]
 
     print(f"[-] Model name \"{model_name}\" and model description \"{model_desc}\" is not supported")
-    return False
+    return 0
 
 
-def get_rsa_public_key(s: requests.Session, ip_addr: str) -> typing.Union[typing.Tuple[int, int, int], None]:
+def get_rsa_public_key(s: requests.Session, router_type: int, ip_addr: str) -> typing.Union[typing.Tuple[int, int, int], None]:
     """
     Requests the public key and sequence from the router.
     :param s: The active HTTP session with the router.
@@ -80,8 +80,11 @@ def get_rsa_public_key(s: requests.Session, ip_addr: str) -> typing.Union[typing
         "Referer": f"http://{ip_addr}",
         "Accept-Language": "en-US,en;q=0.5",
     }
-    data = "[/cgi/getParm#0,0,0,0,0,0#0,0,0,0,0,0]0,0\r\n"
-    resp = s.post(f"http://{ip_addr}/cgi?8", headers=headers, data=data)
+    if router_type == 1:
+        data = "[/cgi/getParm#0,0,0,0,0,0#0,0,0,0,0,0]0,0\r\n"
+        resp = s.post(f"http://{ip_addr}/cgi?8", headers=headers, data=data)
+    elif router_type == 2:
+        resp = s.post(f"http://{ip_addr}/cgi/getParm", headers=headers)
 
     # On success, response should look like the following:
     #
@@ -125,7 +128,7 @@ def get_rsa_public_key(s: requests.Session, ip_addr: str) -> typing.Union[typing
     return e, n, seq
 
 
-def authenticate(s: requests.Session, ip_addr: str, password: str) -> bool:
+def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: str) -> bool:
     """
     Authenticates with the TP-Link router.
     :param s: The active requests session
@@ -134,7 +137,7 @@ def authenticate(s: requests.Session, ip_addr: str, password: str) -> bool:
     :return: True on success, otherwise False
     """
     # Get the RSA public key parameters and the sequence
-    rsa_vals = get_rsa_public_key(s, ip_addr)
+    rsa_vals = get_rsa_public_key(s, router_type, ip_addr)
     if rsa_vals is None:
         print("[-] Failed to get RSA public key and sequence values")
         return False
@@ -217,12 +220,13 @@ def authenticate(s: requests.Session, ip_addr: str, password: str) -> bool:
 def main(ip_addr: str, password: str) -> int:
     print(f"[*] Connecting to router at {ip_addr}")
 
-    if not is_supported_model(ip_addr):
+    router_type = is_supported_model(ip_addr)
+    if router_type == 0:
         print("[-] Router is not supported")
         return 1
 
     s = requests.Session()
-    success = authenticate(s, ip_addr, password)
+    success = authenticate(s, router_type, ip_addr, password)
     if not success:
         print("[-] Could not authenticate with the router")
         s.close()
