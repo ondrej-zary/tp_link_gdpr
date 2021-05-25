@@ -43,12 +43,12 @@ def is_supported_model(ip_addr: str) -> bool:
     print_d(r.text)
 
     # Parse the response for the model name and model description
-    match = re.search(r"modelName=\"([a-zA-Z0-9 ]+)\"", r.text)
+    match = re.search(r"modelName=\"(.+?)\"", r.text)
     if not match:
         print("[-] Could not find the router's model name")
         return False
     model_name: str = match.group(1)
-    match = re.search(r"modelDesc=\"(.+)\"", r.text)
+    match = re.search(r"modelDesc=\"(.+?)\"", r.text)
     if not match:
         print("[-] Could not find the router's model description")
         return False
