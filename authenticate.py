@@ -128,19 +128,19 @@ def get_rsa_public_key(s: requests.Session, router_type: int, ip_addr: str) -> t
     return e, n, seq
 
 
-def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: str) -> bool:
+def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: str) -> str:
     """
     Authenticates with the TP-Link router.
     :param s: The active requests session
     :param ip_addr: The router's IP address
     :param password: The password to the router's web server
-    :return: True on success, otherwise False
+    :return: JSESSIONID on success, otherwise empty string
     """
     # Get the RSA public key parameters and the sequence
     rsa_vals = get_rsa_public_key(s, router_type, ip_addr)
     if rsa_vals is None:
         print("[-] Failed to get RSA public key and sequence values")
-        return False
+        return ""
     e, n, seq = rsa_vals
 
     # Create the data field
@@ -186,7 +186,7 @@ def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: 
     cookie = resp.headers["Set-Cookie"]
     if cookie is None:
         print("[-] Login response did not include a Set-Cookie field in the header")
-        return False
+        return ""
     # Example of the cookie field:
     # ```
     # JSESSIONID=fc1e35a7a860e860be66d44bc7b34e; Path=/; HttpOnly
@@ -195,7 +195,7 @@ def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: 
     match = re.search(r"JSESSIONID=([a-z0-9]+)", cookie)
     if not match:
         print("[-] Could not find the JSESSIONID in the Set-Cookie filed of the login response")
-        return False
+        return ""
     jsessionid = match.group(1)
     print(f"[+] JSESSIONID: {jsessionid}")
 
@@ -225,7 +225,7 @@ def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: 
         print("[-] Unknown response message from router")
         print(decrypted_resp_str)
 
-    return True
+    return jsessionid
 
 
 def main(ip_addr: str, password: str) -> int:
@@ -237,8 +237,8 @@ def main(ip_addr: str, password: str) -> int:
         return 1
 
     s = requests.Session()
-    success = authenticate(s, router_type, ip_addr, password)
-    if not success:
+    jsessionid = authenticate(s, router_type, ip_addr, password)
+    if jsessionid == "":
         print("[-] Could not authenticate with the router")
         s.close()
         return 1
