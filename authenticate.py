@@ -146,7 +146,10 @@ def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: 
     # Create the data field
     aes_key = AES_KEY.encode("utf-8")
     aes_iv = AES_IV.encode("utf-8")
-    login_data: str = f"8\r\n[/cgi/login#0,0,0,0,0,0#0,0,0,0,0,0]0,2\r\nusername={USERNAME}\r\npassword={password}\r\n"
+    if router_type == 1:
+        login_data: str = f"8\r\n[/cgi/login#0,0,0,0,0,0#0,0,0,0,0,0]0,2\r\nusername={USERNAME}\r\npassword={password}\r\n"
+    elif router_type == 2:
+        login_data: str = f"{USERNAME}\n{password}"
     data_ciphertext = tp_link_crypto.aes_encrypt(aes_key, aes_iv, login_data.encode())
     data = base64.b64encode(data_ciphertext).decode()
     print_d(login_data)
@@ -172,8 +175,12 @@ def authenticate(s: requests.Session, router_type: int, ip_addr: str, password: 
         "Accept-Encoding": "gzip, deflate",
         "Accept-Language": "en-US,en;q=0.9",
     }
-    request_data = f"sign={sign.hex()}\r\ndata={data}\r\n"
-    resp = s.post(f"http://{ip_addr}/cgi_gdpr", headers=headers, data=request_data)
+    if router_type == 1:
+        request_data = f"sign={sign.hex()}\r\ndata={data}\r\n"
+        resp = s.post(f"http://{ip_addr}/cgi_gdpr", headers=headers, data=request_data)
+    elif router_type == 2:
+        params = [("data", data), ("sign", sign.hex()), ("Action", "1"), ("LoginStatus", "0")]
+        resp = s.post(f"http://{ip_addr}/cgi/login", headers=headers, params=params, data="")
 
     # Get the session cookie
     cookie = resp.headers["Set-Cookie"]
